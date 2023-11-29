@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<title>Waka - planes near me</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+<head>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background-color: #f0f0f0;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			/* height: 100vh; */
+			text-align: center;
+			flex-direction: column;
+		}
+
+		button {
+			background-color: #4CAF50;
+			color: white;
+			padding: 15px 32px;
+			text-align: center;
+			text-decoration: none;
+			display: inline-block;
+			font-size: 16px;
+			margin: 4px 2px;
+			cursor: pointer;
+			border: none;
+			border-radius: 12px;
+			transition-duration: 0.4s;
+		}
+
+		button:hover {
+			background-color: #45a049;
+			color: white;
+		}
+
+		#planes {
+			margin-top: 20px;
+			font-size: 18px;
+			clear: left;
+		}
+
+		#title {
+			font-size: 3em;
+			color: #4CAF50;
+			text-align: center;
+			animation: slide 3s ease-in-out forwards, blur 0.5s ease-in-out forwards;
+		}
+
+		@keyframes slide {
+			0% {
+				transform: translateX(-100%);
+				filter: blur(10px);
+			}
+
+			100% {
+				transform: translateX(0);
+				filter: blur(0);
+			}
+		}
+
+		@keyframes blur {
+			0% {
+				filter: blur(10px);
+			}
+
+			100% {
+				filter: blur(0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<h1 id="title">Waka: Find Nearby Planes</h1>
+
+	<p>
+		<button onclick="getLocation()">Get Nearby Planes</button>
+	</p>
+
+	<div id="planes"></div>
+
+	<script>
+		function getLocation()
+		{
+			if (navigator.geolocation)
+			{
+				document.getElementById("planes").innerHTML = "<p>Getting your position...</p>";
+				navigator.geolocation.getCurrentPosition(showPosition);
+			} else
+			{
+				document.getElementById("planes").innerHTML = "Geolocation is not supported by this browser.";
+			}
+		}
+
+		function showPosition(position)
+		{
+			document.getElementById("planes").innerHTML = "<p>Fetching planes list...</p>";
+			fetch('https://opensky-network.org/api/states/all')
+				.then(response => response.json())
+				.then(data =>
+				{
+					let userLatitude = position.coords.latitude;
+					let userLongitude = position.coords.longitude;
+					let nearbyPlanes = data.states.filter(plane =>
+					{
+						console.log(plane);
+						let planeLatitude = plane[6];
+						let planeLongitude = plane[5];
+						let distance = Math.sqrt(Math.pow(userLatitude - planeLatitude, 2) + Math.pow(userLongitude - planeLongitude, 2));
+						plane.distance = distance;
+						//set distance to be to 2 dp
+						plane.distance = Math.round(plane.distance * 100) / 100;
+
+						return distance < 10; // change this value to change the radius of the area
+					});
+					//order by plane.distance
+					nearbyPlanes.sort((a, b) => a.distance - b.distance);
+
+					document.getElementById("planes").innerHTML = "" + nearbyPlanes.map(plane =>
+						`<hr/><p>${Math.floor(plane.distance)} km away<br/><b>Callsign:</b> ${plane[1]??'-'}, <b>Country of Origin:</b> ${plane[2]}, <b>Altitude:</b> ${plane[11]}, <b>Speed:</b> ${Math.floor(plane[9]*3.6)} km/h</br>`).join("<br>");
+				})
+				.catch(error => document.getElementById("planes").innerHTML = 'Error: ' + response);
+		}
+
+	</script>
+
+	<pre>Data from The OpenSky Network, https://opensky-network.org</pre>
+	<p>For more info see: <a href="https://openskynetwork.github.io/opensky-api/rest.html">https://openskynetwork.github.io/opensky-api/rest.html</a></p>
+</body>
+
+</html>

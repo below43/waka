@@ -122,7 +122,7 @@
 					nearbyPlanes.sort((a, b) => a.distance - b.distance);
 
 					document.getElementById("planes").innerHTML = "" + nearbyPlanes.map(plane =>
-						`<hr/><p>${Math.floor(plane.distance)} km away<br/><b>Callsign:</b> ${plane[1]??'-'}, <b>Country of Origin:</b> ${plane[2]}, <b>Altitude:</b> ${plane[11]}, <b>Speed:</b> ${Math.floor(plane[9]*3.6)} km/h</br>`).join("<br>");
+						`<hr/><p>${plane.distance} km away<br/><br/><b>Callsign:</b> ${plane[1]??'-'}, <b>Country of Origin:</b> ${plane[2]}, <b>Altitude:</b> ${plane[11]}, <b>Speed:</b> ${Math.floor(plane[9]*3.6)} km/h</br>`).join("<br>");
 				})
 				.catch(error => document.getElementById("planes").innerHTML = 'Error: ' + response);
 		}

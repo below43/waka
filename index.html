@@ -96,11 +96,54 @@
 				document.getElementById("planes").innerHTML = "Geolocation is not supported by this browser.";
 			}
 		}
+		// Convert from degrees to radians
+		function degreesToRadians(degrees)
+		{
+			var radians = (degrees * Math.PI) / 180;
+			return radians;
+		}
+
+		// Function takes two objects, that contain coordinates to a starting and destination location.
+		function calcDistance(startingCoords, destinationCoords)
+		{
+			let startingLat = degreesToRadians(startCoords.latitude);
+			let startingLong = degreesToRadians(startCoords.longitude);
+			let destinationLat = degreesToRadians(destCoords.latitude);
+			let destinationLong = degreesToRadians(destCoords.longitude);
+			// Radius of the Earth in kilometers
+			let radius = 6371;
+			// Haversine equation
+			let distanceInKilometers = Math.acos(Math.sin(startingLat) * Math.sin(destinationLat) +
+				Math.cos(startingLat) * Math.cos(destinationLat) *
+				Math.cos(startingLong - destinationLong)) * radius;
+			return distanceInKilometers;
+		}
 
 		function showPosition(position)
 		{
+
+
+
+			// Calculate the latitude and longitude boundaries
+			let userLocation = {
+				latitude: position.coords.latitude,
+				longitude: position.coords.longitude
+			};
+			let distance = 100; // 500km
+			let deltaLat = distance / 111; // Approximate distance in degrees
+			let deltaLong = distance / (111 * Math.cos(degreesToRadians(userLocation.latitude))); // Approximate distance in degrees
+			let northLat = userLocation.latitude + deltaLat;
+			let southLat = userLocation.latitude - deltaLat;
+			let eastLong = userLocation.longitude + deltaLong;
+			let westLong = userLocation.longitude - deltaLong;
+
+			// Now you can use these values to fetch planes within this bounding box
+
+
 			document.getElementById("planes").innerHTML = "<p>Fetching planes list...</p>";
-			fetch('https://opensky-network.org/api/states/all')
+			// fetch('https://opensky-network.org/api/states/all')
+
+			fetch(`https://opensky-network.org/api/states/all?lamin=${southLat}&lamax=${northLat}&lomin=${westLong}&lomax=${eastLong}`)
 				.then(response => response.json())
 				.then(data =>
 				{
@@ -111,22 +154,42 @@
 						console.log(plane);
 						let planeLatitude = plane[6];
 						let planeLongitude = plane[5];
-						let distance = Math.sqrt(Math.pow(userLatitude - planeLatitude, 2) + Math.pow(userLongitude - planeLongitude, 2));
+						let distance = haversineDistance(userLatitude, userLongitude, planeLatitude, planeLongitude);
+
 						plane.distance = distance;
+
 						//set distance to be to 2 dp
 						plane.distance = Math.round(plane.distance * 100) / 100;
 
-						return distance < 10; // change this value to change the radius of the area
+						return true; //distance < 50; // change this value to change the radius of the area
 					});
 					//order by plane.distance
 					nearbyPlanes.sort((a, b) => a.distance - b.distance);
 
 					document.getElementById("planes").innerHTML = "" + nearbyPlanes.map(plane =>
-						`<hr/><p>${plane.distance} km away<br/><br/><b>Callsign:</b> ${plane[1]??'-'}, <b>Country of Origin:</b> ${plane[2]}, <b>Altitude:</b> ${plane[11]}, <b>Speed:</b> ${Math.floor(plane[9]*3.6)} km/h</br>`).join("<br>");
+						`<hr/><p>${plane.distance} km away<br/><br/><b>Callsign:</b> ${plane[1] ?? '-'}, <b>Country of Origin:</b> ${plane[2]}, <b>Altitude:</b> ${plane[11] > 0 ? Math.floor(plane[11] * 0.3048) : plane[11]} m, <b>Speed:</b> ${Math.floor(plane[9] * 3.6)} km/h</br>`).join("<br>");
 				})
-				.catch(error => document.getElementById("planes").innerHTML = 'Error: ' + response);
+				.catch(error => document.getElementById("planes").innerHTML = 'Error: ' + response ?? error);
+		}
+		function haversineDistance(lat1, lon1, lat2, lon2)
+		{
+			var R = 6371; // Radius of the earth in km
+			var dLat = deg2rad(lat2 - lat1); // deg2rad below
+			var dLon = deg2rad(lon2 - lon1);
+			var a =
+				Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+				Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+				Math.sin(dLon / 2) * Math.sin(dLon / 2)
+				;
+			var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+			var d = R * c; // Distance in km
+			return d;
 		}
 
+		function deg2rad(deg)
+		{
+			return deg * (Math.PI / 180)
+		}
 	</script>
 
 	<pre>Data from The OpenSky Network, https://opensky-network.org</pre>
